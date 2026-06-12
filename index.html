@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relogio de Estudo</title>
+  <meta name="description" content="Relogio simples para estudar com intervalos e toques.">
+  <meta name="theme-color" content="#1d6f64">
+  <link rel="manifest" href="site.webmanifest">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172022;
+      --muted: #667277;
+      --line: #d9e0df;
+      --paper: #f7f6f1;
+      --panel: #ffffff;
+      --study: #1d6f64;
+      --break: #a8492f;
+      --accent: #2267b0;
+      --shadow: 0 18px 50px rgba(23, 32, 34, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(135deg, rgba(29, 111, 100, 0.12), transparent 34%),
+        linear-gradient(315deg, rgba(168, 73, 47, 0.11), transparent 38%),
+        var(--paper);
+      color: var(--ink);
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(1080px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .timer,
+    .settings {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    .timer {
+      min-height: 590px;
+      padding: clamp(22px, 5vw, 48px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 24px;
+    }
+
+    .topbar,
+    .controls,
+    .stats,
+    .field-row,
+    .sound-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar {
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.2rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .phase-pill {
+      min-width: 136px;
+      text-align: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: white;
+      background: var(--study);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    .phase-pill.break {
+      background: var(--break);
+    }
+
+    .clock-wrap {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      align-content: center;
+      gap: 18px;
+    }
+
+    .clock {
+      width: min(440px, 100%);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(var(--study) var(--progress), #e7eceb 0),
+        var(--panel);
+      padding: 14px;
+      transition: background 220ms ease;
+    }
+
+    .clock.break {
+      background:
+        conic-gradient(var(--break) var(--progress), #e7eceb 0),
+        var(--panel);
+    }
+
+    .clock-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--panel);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .time {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(4rem, 13vw, 8rem);
+      font-weight: 850;
+      line-height: 0.9;
+      letter-spacing: 0;
+    }
+
+    .substatus {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+      min-height: 1.5em;
+    }
+
+    .controls {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      min-height: 46px;
+      padding: 0 18px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: #aeb9b7;
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      min-width: 132px;
+    }
+
+    .settings {
+      padding: 24px;
+      display: grid;
+      gap: 22px;
+      align-content: start;
+    }
+
+    .settings h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .preset-grid button {
+      min-height: 42px;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 750;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 12px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(34, 103, 176, 0.15);
+    }
+
+    .field-row {
+      align-items: start;
+    }
+
+    .field-row label {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sound-row {
+      justify-content: space-between;
+      padding-top: 4px;
+    }
+
+    .toggle {
+      width: 58px;
+      min-width: 58px;
+      padding: 0;
+      position: relative;
+      background: #e4e9e8;
+      border-color: #cfd8d6;
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      top: 10px;
+      left: 10px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(23, 32, 34, 0.2);
+      transition: left 160ms ease, background 160ms ease;
+    }
+
+    .toggle[aria-pressed="true"] {
+      background: var(--study);
+      border-color: var(--study);
+    }
+
+    .toggle[aria-pressed="true"]::after {
+      left: 22px;
+    }
+
+    .stats {
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      color: var(--muted);
+      font-weight: 750;
+      flex-wrap: wrap;
+    }
+
+    .stats strong {
+      display: block;
+      color: var(--ink);
+      font-size: 1.25rem;
+    }
+
+    .footer-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 820px) {
+      main {
+        padding: 14px;
+        place-items: start center;
+      }
+
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .timer {
+        min-height: auto;
+      }
+
+      .settings {
+        order: -1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .field-row,
+      .topbar {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .phase-pill {
+        width: 100%;
+      }
+
+      .primary,
+      .controls button {
+        flex: 1 1 132px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="app" aria-label="Relogio de estudo com intervalos">
+      <div class="timer">
+        <div class="topbar">
+          <h1>Relogio de Estudo</h1>
+          <div class="phase-pill" id="phasePill">Estudo</div>
+        </div>
+
+        <div class="clock-wrap">
+          <div class="clock" id="clock" style="--progress: 0deg" aria-live="polite">
+            <div class="clock-inner">
+              <div class="time" id="time">25:00</div>
+            </div>
+          </div>
+          <p class="substatus" id="substatus">Ciclo 1 de 4</p>
+        </div>
+
+        <div>
+          <div class="controls">
+            <button class="primary" id="startPause" type="button">Iniciar</button>
+            <button id="skip" type="button">Saltar</button>
+            <button id="reset" type="button">Repor</button>
+          </div>
+          <div class="stats" aria-label="Resumo da sessao">
+            <span><strong id="doneStudy">0</strong> estudos feitos</span>
+            <span><strong id="doneBreaks">0</strong> intervalos feitos</span>
+            <span><strong id="totalFocus">0 min</strong> foco total</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="settings">
+        <h2>Tempos</h2>
+        <div class="preset-grid" aria-label="Predefinicoes">
+          <button type="button" data-study="25" data-break="5" data-cycles="4">25 / 5</button>
+          <button type="button" data-study="50" data-break="10" data-cycles="3">50 / 10</button>
+          <button type="button" data-study="30" data-break="8" data-cycles="4">30 / 8</button>
+          <button type="button" data-study="15" data-break="3" data-cycles="5">15 / 3</button>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Estudo
+            <input id="studyMinutes" type="number" min="1" max="180" value="25">
+          </label>
+          <label>
+            Intervalo
+            <input id="breakMinutes" type="number" min="1" max="60" value="5">
+          </label>
+        </div>
+
+        <label>
+          Ciclos
+          <select id="cycles">
+            <option value="1">1 ciclo</option>
+            <option value="2">2 ciclos</option>
+            <option value="3">3 ciclos</option>
+            <option value="4" selected>4 ciclos</option>
+            <option value="5">5 ciclos</option>
+            <option value="6">6 ciclos</option>
+            <option value="8">8 ciclos</option>
+          </select>
+        </label>
+
+        <div class="sound-row">
+          <div>
+            <h2>Toques</h2>
+            <p class="footer-note" id="soundText">Som ativo nas mudancas.</p>
+          </div>
+          <button class="toggle" id="soundToggle" type="button" aria-label="Alternar som" aria-pressed="true"></button>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      time: document.querySelector("#time"),
+      phasePill: document.querySelector("#phasePill"),
+      clock: document.querySelector("#clock"),
+      substatus: document.querySelector("#substatus"),
+      startPause: document.querySelector("#startPause"),
+      skip: document.querySelector("#skip"),
+      reset: document.querySelector("#reset"),
+      studyMinutes: document.querySelector("#studyMinutes"),
+      breakMinutes: document.querySelector("#breakMinutes"),
+      cycles: document.querySelector("#cycles"),
+      soundToggle: document.querySelector("#soundToggle"),
+      soundText: document.querySelector("#soundText"),
+      doneStudy: document.querySelector("#doneStudy"),
+      doneBreaks: document.querySelector("#doneBreaks"),
+      totalFocus: document.querySelector("#totalFocus")
+    };
+
+    const state = {
+      phase: "study",
+      running: false,
+      currentCycle: 1,
+      remaining: 25 * 60,
+      phaseTotal: 25 * 60,
+      doneStudy: 0,
+      doneBreaks: 0,
+      sound: true,
+      timerId: null,
+      lastTick: null
+    };
+
+    function minutes(input, fallback) {
+      const value = Number.parseInt(input.value, 10);
+      return Number.isFinite(value) ? Math.min(Math.max(value, Number(input.min)), Number(input.max)) : fallback;
+    }
+
+    function cycleCount() {
+      const value = Number.parseInt(els.cycles.value, 10);
+      return Number.isFinite(value) ? value : 4;
+    }
+
+    function phaseSeconds(phase = state.phase) {
+      const study = minutes(els.studyMinutes, 25) * 60;
+      const pause = minutes(els.breakMinutes, 5) * 60;
+      return phase === "study" ? study : pause;
+    }
+
+    function format(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function render() {
+      const totalCycles = cycleCount();
+      const doneMinutes = state.doneStudy * minutes(els.studyMinutes, 25);
+      const progress = state.phaseTotal === 0 ? 0 : (1 - state.remaining / state.phaseTotal) * 360;
+      const isBreak = state.phase === "break";
+
+      els.time.textContent = format(Math.max(0, state.remaining));
+      els.phasePill.textContent = isBreak ? "Intervalo" : "Estudo";
+      els.phasePill.classList.toggle("break", isBreak);
+      els.clock.classList.toggle("break", isBreak);
+      els.clock.style.setProperty("--progress", `${progress}deg`);
+      els.substatus.textContent = state.currentCycle > totalCycles
+        ? "Sessao completa"
+        : `Ciclo ${state.currentCycle} de ${totalCycles}`;
+      els.startPause.textContent = state.running ? "Pausar" : "Iniciar";
+      els.doneStudy.textContent = state.doneStudy;
+      els.doneBreaks.textContent = state.doneBreaks;
+      els.totalFocus.textContent = `${doneMinutes} min`;
+    }
+
+    function playTone(ctx, destination, freq, start, duration, gainValue, type = "sine") {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.985, start + duration);
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      osc.connect(gain);
+      gain.connect(destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.03);
+    }
+
+    function beep(kind) {
+      if (!state.sound) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      const ctx = new AudioContext();
+      const master = ctx.createGain();
+      const delay = ctx.createDelay();
+      const echo = ctx.createGain();
+      master.gain.value = 1.12;
+      delay.delayTime.value = 0.13;
+      echo.gain.value = 0.28;
+      master.connect(ctx.destination);
+      master.connect(delay);
+      delay.connect(echo);
+      echo.connect(ctx.destination);
+
+      const startAt = ctx.currentTime + 0.02;
+      const notes = kind === "done"
+        ? [
+            { freq: 523.25, at: 0, duration: 0.18, gain: 0.26 },
+            { freq: 659.25, at: 0.17, duration: 0.2, gain: 0.27 },
+            { freq: 783.99, at: 0.34, duration: 0.34, gain: 0.28 }
+          ]
+        : [
+            { freq: 659.25, at: 0, duration: 0.16, gain: 0.24 },
+            { freq: 880, at: 0.14, duration: 0.24, gain: 0.25 }
+          ];
+
+      notes.forEach((note) => {
+        playTone(ctx, master, note.freq, startAt + note.at, note.duration, note.gain, "sine");
+        playTone(ctx, master, note.freq * 2, startAt + note.at, note.duration * 0.72, note.gain * 0.22, "triangle");
+      });
+      window.setTimeout(() => ctx.close(), kind === "done" ? 1300 : 900);
+      if (navigator.vibrate) navigator.vibrate(kind === "done" ? [120, 70, 120] : [90]);
+    }
+
+    function pause() {
+      state.running = false;
+      state.lastTick = null;
+      window.clearInterval(state.timerId);
+      render();
+    }
+
+    function start() {
+      if (state.currentCycle > cycleCount()) reset(false);
+      state.running = true;
+      state.lastTick = Date.now();
+      state.timerId = window.setInterval(tick, 250);
+      render();
+    }
+
+    function tick() {
+      const now = Date.now();
+      const elapsed = Math.floor((now - state.lastTick) / 1000);
+      if (elapsed <= 0) return;
+      state.lastTick += elapsed * 1000;
+      state.remaining -= elapsed;
+
+      if (state.remaining <= 0) {
+        nextPhase();
+      } else {
+        render();
+      }
+    }
+
+    function nextPhase() {
+      const totalCycles = cycleCount();
+      if (state.currentCycle > totalCycles) return;
+
+      if (state.phase === "study") {
+        state.doneStudy += 1;
+        if (state.currentCycle > totalCycles) {
+          complete();
+          return;
+        }
+        state.phase = "break";
+        state.remaining = phaseSeconds("break");
+        state.phaseTotal = state.remaining;
+        beep("switch");
+      } else {
+        state.doneBreaks += 1;
+        state.currentCycle += 1;
+        if (state.currentCycle > totalCycles) {
+          complete();
+          return;
+        }
+        state.phase = "study";
+        state.remaining = phaseSeconds("study");
+        state.phaseTotal = state.remaining;
+        beep("switch");
+      }
+      state.lastTick = Date.now();
+      render();
+    }
+
+    function complete() {
+      state.phase = "study";
+      state.remaining = 0;
+      state.phaseTotal = phaseSeconds("study");
+      pause();
+      state.currentCycle = cycleCount() + 1;
+      beep("done");
+      render();
+    }
+
+    function reset(clearStats = true) {
+      pause();
+      state.phase = "study";
+      state.currentCycle = 1;
+      state.remaining = phaseSeconds("study");
+      state.phaseTotal = state.remaining;
+      if (clearStats) {
+        state.doneStudy = 0;
+        state.doneBreaks = 0;
+      }
+      render();
+    }
+
+    els.startPause.addEventListener("click", () => state.running ? pause() : start());
+    els.skip.addEventListener("click", () => nextPhase());
+    els.reset.addEventListener("click", () => reset(true));
+
+    [els.studyMinutes, els.breakMinutes].forEach((control) => {
+      control.addEventListener("change", () => {
+        control.value = minutes(control, Number(control.value || 1));
+        if (!state.running) reset(false);
+      });
+    });
+
+    els.cycles.addEventListener("change", () => {
+      if (!state.running) reset(false);
+    });
+
+    document.querySelectorAll("[data-study]").forEach((button) => {
+      button.addEventListener("click", () => {
+        els.studyMinutes.value = button.dataset.study;
+        els.breakMinutes.value = button.dataset.break;
+        els.cycles.value = button.dataset.cycles;
+        reset(true);
+      });
+    });
+
+    els.soundToggle.addEventListener("click", () => {
+      state.sound = !state.sound;
+      els.soundToggle.setAttribute("aria-pressed", String(state.sound));
+      els.soundText.textContent = state.sound ? "Som ativo nas mudancas." : "Som desligado.";
+      if (state.sound) beep("switch");
+    });
+
+    reset(true);
+  </script>
+</body>
+</html>

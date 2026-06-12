@@ -1,0 +1,9 @@
+{
+  "name": "Relogio de Estudo",
+  "short_name": "Estudo",
+  "description": "Relogio simples para estudar com intervalos e toques.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f6f1",
+  "theme_color": "#1d6f64"
+}
