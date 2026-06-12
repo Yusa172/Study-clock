@@ -6,6 +6,7 @@
   <title>Relogio de Estudo</title>
   <meta name="description" content="Relogio simples para estudar com intervalos e toques.">
   <meta name="theme-color" content="#1d6f64">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231d6f64'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='white' stroke-width='5'/%3E%3Cpath d='M32 18v15l10 7' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="site.webmanifest">
   <style>
     :root {
@@ -158,6 +159,14 @@
       min-height: 1.5em;
     }
 
+    .phase-hint {
+      margin: -8px 0 0;
+      color: var(--muted);
+      min-height: 1.4em;
+      font-size: 0.95rem;
+      font-weight: 650;
+    }
+
     .controls {
       justify-content: center;
       flex-wrap: wrap;
@@ -261,6 +270,41 @@
     .sound-row {
       justify-content: space-between;
       padding-top: 4px;
+    }
+
+    .volume-control {
+      gap: 10px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .volume-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .volume-head span {
+      color: var(--ink);
+      font-size: 0.95rem;
+      font-weight: 850;
+    }
+
+    input[type="range"] {
+      display: block;
+      width: 100%;
+      min-height: 34px;
+      border: 0;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      accent-color: var(--study);
+      cursor: pointer;
+    }
+
+    .test-sound {
+      width: 100%;
     }
 
     .toggle {
@@ -368,7 +412,8 @@
               <div class="time" id="time">25:00</div>
             </div>
           </div>
-          <p class="substatus" id="substatus">Ciclo 1 de 4</p>
+          <p class="substatus" id="substatus" aria-live="polite">Ciclo 1 de 4</p>
+          <p class="phase-hint" id="phaseHint">Define os tempos e inicia a sessao.</p>
         </div>
 
         <div>
@@ -425,6 +470,16 @@
           </div>
           <button class="toggle" id="soundToggle" type="button" aria-label="Alternar som" aria-pressed="true"></button>
         </div>
+
+        <label class="volume-control">
+          <span class="volume-head">
+            Volume
+            <span id="volumeValue">112%</span>
+          </span>
+          <input id="volume" type="range" min="40" max="160" value="112" step="1">
+        </label>
+
+        <button class="test-sound" id="testSound" type="button">Testar som</button>
       </aside>
     </section>
   </main>
@@ -435,6 +490,7 @@
       phasePill: document.querySelector("#phasePill"),
       clock: document.querySelector("#clock"),
       substatus: document.querySelector("#substatus"),
+      phaseHint: document.querySelector("#phaseHint"),
       startPause: document.querySelector("#startPause"),
       skip: document.querySelector("#skip"),
       reset: document.querySelector("#reset"),
@@ -443,10 +499,15 @@
       cycles: document.querySelector("#cycles"),
       soundToggle: document.querySelector("#soundToggle"),
       soundText: document.querySelector("#soundText"),
+      volume: document.querySelector("#volume"),
+      volumeValue: document.querySelector("#volumeValue"),
+      testSound: document.querySelector("#testSound"),
       doneStudy: document.querySelector("#doneStudy"),
       doneBreaks: document.querySelector("#doneBreaks"),
       totalFocus: document.querySelector("#totalFocus")
     };
+
+    const STORAGE_KEY = "study-clock-settings";
 
     const state = {
       phase: "study",
@@ -457,13 +518,23 @@
       doneStudy: 0,
       doneBreaks: 0,
       sound: true,
+      volume: 1.12,
       timerId: null,
       lastTick: null
     };
 
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
     function minutes(input, fallback) {
       const value = Number.parseInt(input.value, 10);
       return Number.isFinite(value) ? Math.min(Math.max(value, Number(input.min)), Number(input.max)) : fallback;
+    }
+
+    function volumePercent() {
+      const value = Number.parseInt(els.volume.value, 10);
+      return Number.isFinite(value) ? clamp(value, Number(els.volume.min), Number(els.volume.max)) : 112;
     }
 
     function cycleCount() {
@@ -483,6 +554,46 @@
       return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     }
 
+    function saveSettings() {
+      const settings = {
+        studyMinutes: minutes(els.studyMinutes, 25),
+        breakMinutes: minutes(els.breakMinutes, 5),
+        cycles: cycleCount(),
+        sound: state.sound,
+        volume: volumePercent()
+      };
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch {
+        // Local storage can be disabled; the timer should still work.
+      }
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+        if (saved.studyMinutes) els.studyMinutes.value = clamp(Number(saved.studyMinutes), 1, 180);
+        if (saved.breakMinutes) els.breakMinutes.value = clamp(Number(saved.breakMinutes), 1, 60);
+        if (saved.cycles && [...els.cycles.options].some((option) => option.value === String(saved.cycles))) {
+          els.cycles.value = String(saved.cycles);
+        }
+        if (typeof saved.sound === "boolean") state.sound = saved.sound;
+        if (saved.volume) els.volume.value = clamp(Number(saved.volume), 40, 160);
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+      updateSoundUi();
+    }
+
+    function updateSoundUi() {
+      const percent = volumePercent();
+      state.volume = percent / 100;
+      els.volume.value = percent;
+      els.volumeValue.textContent = `${percent}%`;
+      els.soundToggle.setAttribute("aria-pressed", String(state.sound));
+      els.soundText.textContent = state.sound ? "Som ativo nas mudancas." : "Som desligado.";
+    }
+
     function render() {
       const totalCycles = cycleCount();
       const doneMinutes = state.doneStudy * minutes(els.studyMinutes, 25);
@@ -497,10 +608,18 @@
       els.substatus.textContent = state.currentCycle > totalCycles
         ? "Sessao completa"
         : `Ciclo ${state.currentCycle} de ${totalCycles}`;
+      els.phaseHint.textContent = state.currentCycle > totalCycles
+        ? "Sessao terminada."
+        : state.running
+          ? isBreak ? "Intervalo em progresso." : "Estudo em progresso."
+          : "Pronto para iniciar.";
       els.startPause.textContent = state.running ? "Pausar" : "Iniciar";
       els.doneStudy.textContent = state.doneStudy;
       els.doneBreaks.textContent = state.doneBreaks;
       els.totalFocus.textContent = `${doneMinutes} min`;
+      document.title = state.running
+        ? `${format(Math.max(0, state.remaining))} - ${isBreak ? "Intervalo" : "Estudo"}`
+        : "Relogio de Estudo";
     }
 
     function playTone(ctx, destination, freq, start, duration, gainValue, type = "sine") {
@@ -527,13 +646,20 @@
       const master = ctx.createGain();
       const delay = ctx.createDelay();
       const echo = ctx.createGain();
-      master.gain.value = 1.12;
+      const compressor = ctx.createDynamicsCompressor();
+      master.gain.value = state.volume;
       delay.delayTime.value = 0.13;
       echo.gain.value = 0.28;
-      master.connect(ctx.destination);
+      compressor.threshold.value = -18;
+      compressor.knee.value = 18;
+      compressor.ratio.value = 6;
+      compressor.attack.value = 0.004;
+      compressor.release.value = 0.12;
+      compressor.connect(ctx.destination);
+      master.connect(compressor);
       master.connect(delay);
       delay.connect(echo);
-      echo.connect(ctx.destination);
+      echo.connect(compressor);
 
       const startAt = ctx.currentTime + 0.02;
       const notes = kind === "done"
@@ -644,11 +770,13 @@
     [els.studyMinutes, els.breakMinutes].forEach((control) => {
       control.addEventListener("change", () => {
         control.value = minutes(control, Number(control.value || 1));
+        saveSettings();
         if (!state.running) reset(false);
       });
     });
 
     els.cycles.addEventListener("change", () => {
+      saveSettings();
       if (!state.running) reset(false);
     });
 
@@ -657,17 +785,26 @@
         els.studyMinutes.value = button.dataset.study;
         els.breakMinutes.value = button.dataset.break;
         els.cycles.value = button.dataset.cycles;
+        saveSettings();
         reset(true);
       });
     });
 
     els.soundToggle.addEventListener("click", () => {
       state.sound = !state.sound;
-      els.soundToggle.setAttribute("aria-pressed", String(state.sound));
-      els.soundText.textContent = state.sound ? "Som ativo nas mudancas." : "Som desligado.";
+      updateSoundUi();
+      saveSettings();
       if (state.sound) beep("switch");
     });
 
+    els.volume.addEventListener("input", () => {
+      updateSoundUi();
+      saveSettings();
+    });
+
+    els.testSound.addEventListener("click", () => beep("done"));
+
+    loadSettings();
     reset(true);
   </script>
 </body>

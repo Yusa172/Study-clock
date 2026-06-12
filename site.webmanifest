@@ -2,8 +2,12 @@
   "name": "Relogio de Estudo",
   "short_name": "Estudo",
   "description": "Relogio simples para estudar com intervalos e toques.",
+  "id": "/Study-clock/",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f7f6f1",
-  "theme_color": "#1d6f64"
+  "theme_color": "#1d6f64",
+  "lang": "pt",
+  "categories": ["productivity", "education"]
 }
