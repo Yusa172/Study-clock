@@ -2,7 +2,7 @@
 
 Uma app simples para escolher tempo de estudo, intervalos e ciclos, com toques sonoros quando muda de fase.
 
-## Como publicar no GitHub Pages
+## Como publicar no GitHub Pages sem erro de Actions
 
 1. Cria um repositorio no GitHub.
 2. Envia estes ficheiros para a raiz do repositorio:
@@ -16,3 +16,5 @@ Uma app simples para escolher tempo de estudo, intervalos e ciclos, com toques s
    `https://teu-utilizador.github.io/nome-do-repositorio/`
 
 Se quiseres um link mais curto, cria o repositorio com o nome `teu-utilizador.github.io`.
+
+Nota: este site nao precisa de GitHub Actions. Se aparecer um deploy antigo a falhar, podes ignorar depois deste commit ou cancelar esse workflow no separador `Actions`.
