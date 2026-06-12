@@ -1,20 +1,23 @@
-# Relogio de Estudo
+# Study Clock
 
-Uma app simples para escolher tempo de estudo, intervalos e ciclos, com toques sonoros quando muda de fase.
+Study Clock e uma aplicacao simples para organizar sessoes de estudo com intervalos.
 
-## Como publicar no GitHub Pages sem erro de Actions
+A app funciona como um relogio de foco: escolhes quantos minutos queres estudar, quantos minutos queres descansar e quantos ciclos queres fazer. Quando uma fase termina, a aplicacao toca um som para avisar que esta na hora de mudar entre estudo e intervalo.
 
-1. Cria um repositorio no GitHub.
-2. Envia estes ficheiros para a raiz do repositorio:
-   - `index.html`
-   - `site.webmanifest`
-   - `.nojekyll`
-3. No GitHub, vai a `Settings` > `Pages`.
-4. Em `Build and deployment`, escolhe `Deploy from a branch`.
-5. Escolhe a branch `main` e a pasta `/root`.
-6. Guarda. O GitHub vai criar um link do tipo:
-   `https://teu-utilizador.github.io/nome-do-repositorio/`
+## Funcionalidades
 
-Se quiseres um link mais curto, cria o repositorio com o nome `teu-utilizador.github.io`.
+- Escolha do tempo de estudo.
+- Escolha do tempo de intervalo.
+- Escolha do numero de ciclos.
+- Botao para iniciar e pausar o temporizador.
+- Botao para saltar diretamente para a proxima fase.
+- Botao para repor a sessao.
+- Toque sonoro quando muda de fase.
+- Contador de estudos feitos, intervalos feitos e tempo total de foco.
+- Interface simples, limpa e adaptada para telemovel e computador.
 
-Nota: este site nao precisa de GitHub Actions. Se aparecer um deploy antigo a falhar, podes ignorar depois deste commit ou cancelar esse workflow no separador `Actions`.
+## Objetivo
+
+O objetivo da Study Clock e ajudar a estudar com mais organizacao, separando o tempo de foco e o tempo de descanso de forma clara.
+
+E uma app leve, sem contas, sem instalacao obrigatoria e sem distracoes.
