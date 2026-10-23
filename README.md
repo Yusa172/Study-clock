@@ -14,6 +14,7 @@ Escolhes quantos minutos queres estudar, quantos minutos de intervalo queres e q
 - Iniciar, pausar, saltar para a próxima fase e repor a sessão.
 - **Números grandes** que ocupam o espaço disponível em qualquer ecrã, de 320x480 até Full HD.
 - **Modo foco**: só fica o tempo, a fase e a barra de progresso; os botões desaparecem enquanto o relógio conta e voltam quando mexes no rato.
+- **Janela flutuante** (tecla `P`): o relógio sai da página para uma pequena janela que fica sempre por cima das outras, como um vídeo em "Picture-in-Picture". Funciona no Edge e no Chrome no computador.
 - **Ecrã inteiro** com um clique ou com a tecla `F`.
 - **Tema escuro**, claro ou automático (segue o Windows).
 - **O ecrã não se apaga** enquanto o relógio conta ou está em modo foco (em browsers que o permitem: Edge, Chrome, Firefox e Safari recentes).
@@ -21,9 +22,21 @@ Escolhes quantos minutos queres estudar, quantos minutos de intervalo queres e q
 - A sessão continua se recarregares a página ou se o browser fechar sem querer.
 - Hora atual e hora prevista para o fim da fase ("Intervalo às 15:05").
 - Atalhos de teclado.
-- Toque sonoro com volume ajustável e aviso visual quando muda de fase.
+- **Toque de sino forte e claro**, diferente para cada momento: desce quando começa o intervalo, sobe quando voltas ao estudo e acaba num acorde no fim da sessão. Toca duas vezes para não passar despercebido, e o ecrã pisca ao mesmo tempo.
 - Contador de estudos feitos, intervalos feitos e minutos reais de foco.
 - As definições ficam guardadas no browser. Não há contas nem dados enviados para lado nenhum.
+
+## Janela flutuante
+
+Carrega no botão da janela flutuante (no canto superior direito) ou na tecla `P`. O relógio passa para uma janela pequena que fica sempre por cima das outras aplicações: podes estudar no Word ou no PDF e continuar a ver o tempo.
+
+![Janela flutuante](docs/screenshots/janela-flutuante.png)
+
+- Podes arrastar a janela para qualquer sítio, incluindo para o mini monitor, e mudar o tamanho dela. Os números ajustam-se sozinhos.
+- Na janela funcionam as teclas `Espaço`, `S`, `R`, `T` e `P`.
+- Para a fechar, carrega no mesmo botão, em `P` ou no X da janela. O relógio volta para a página sem parar de contar.
+- Enquanto a janela está aberta, as definições ficam na página original.
+- A janela flutuante existe no Edge e no Chrome (versão 116 ou mais recente) no computador. Noutros browsers o botão não aparece.
 
 ## Como usar num mini monitor
 
@@ -51,6 +64,8 @@ Podes criar um atalho no Ambiente de Trabalho com este destino. O `--window-posi
 O `--user-data-dir` abre uma instância separada do Edge, para as opções funcionarem mesmo que o Edge já esteja aberto. Depois de abrir, carrega em `F` para ecrã inteiro.
 
 ### Tamanhos testados
+
+A janela flutuante foi testada em 240x140, 300x170, 380x230 (o tamanho inicial), 520x300 e 600x150.
 
 O layout foi testado sem barras de scroll e sem elementos cortados nestes tamanhos, com tema escuro e claro, em modo foco e com as definições abertas:
 
@@ -92,6 +107,7 @@ Monitor normal (1920x1080), com as definições ao lado:
 | `Espaço` | Iniciar ou pausar |
 | `S` | Saltar para a próxima fase |
 | `R` | Repor a sessão |
+| `P` | Janela flutuante, sempre por cima |
 | `F` | Ecrã inteiro (entra em modo foco) |
 | `M` | Modo foco, sem distrações |
 | `T` | Mudar tema: automático, escuro, claro |
@@ -101,6 +117,7 @@ Monitor normal (1920x1080), com as definições ao lado:
 
 ## Notas
 
+- O volume vai de 10% a 100%. Os 100% são o máximo que as colunas aguentam sem o som distorcer (o toque antigo correspondia a cerca de 20%).
 - Os browsers só deixam tocar som depois de clicares ou carregares numa tecla na página. Se recarregares a página com o relógio a contar, clica uma vez no relógio para voltar a ter som.
 - Se o computador entrar em suspensão a meio de uma sessão, o relógio acerta o tempo quando voltar, tal como um temporizador de telemóvel.
 - A aplicação é um único ficheiro (`index.html`), sem dependências. Também funciona sem internet: descarrega o repositório e abre o `index.html`.

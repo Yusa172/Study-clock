@@ -577,6 +577,7 @@
       border-radius: 0;
       box-shadow: none;
       background: var(--screen);
+      grid-template-columns: minmax(0, 1fr);
       padding:
         max(clamp(8px, 2.6vmin, 26px), env(safe-area-inset-top))
         max(clamp(10px, 3vmin, 30px), env(safe-area-inset-right))
@@ -820,6 +821,66 @@
       flex-basis: 100%;
     }
 
+    /* Janela flutuante (Picture-in-Picture) */
+    .pip-placeholder {
+      min-height: 220px;
+      display: grid;
+      place-content: center;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 750;
+      background: var(--panel-soft);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+    }
+
+    .pip-placeholder p {
+      margin: 0;
+    }
+
+    .pip-placeholder .row-buttons {
+      display: flex;
+      justify-content: center;
+    }
+
+    .compact .pip-placeholder {
+      height: 100%;
+      border: 0;
+      border-radius: 0;
+      background: var(--screen);
+    }
+
+    .pip-placeholder #pipSettings {
+      display: none;
+    }
+
+    .compact .pip-placeholder #pipSettings {
+      display: block;
+    }
+
+    .pip .tools > :not(#pipBtn) {
+      display: none;
+    }
+
+    .pip .topbar {
+      gap: 8px;
+    }
+
+    @media (max-width: 300px) {
+      .pip .now {
+        display: none;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .compact:not(.pip) #themeBtn,
+      .compact:not(.pip) #pipBtn {
+        display: none;
+      }
+    }
+
     /* Modo foco: só o essencial; os botões escondem-se enquanto conta */
     .focus .phase-hint {
       display: none;
@@ -879,6 +940,13 @@
 <body>
   <main>
     <section class="app" aria-label="Relógio de estudo com intervalos">
+      <div class="pip-placeholder" id="pipPlaceholder" hidden>
+        <p>O relógio está na janela flutuante.</p>
+        <div class="row-buttons">
+          <button class="primary" id="pipBack" type="button">Trazer de volta</button>
+          <button id="pipSettings" type="button">Definições</button>
+        </div>
+      </div>
       <div class="timer">
         <header class="topbar">
           <h1 class="brand">Relógio de Estudo</h1>
@@ -894,6 +962,9 @@
             </button>
             <button class="icon-btn" id="focusBtn" type="button" aria-label="Modo foco" title="Modo foco (M)" aria-pressed="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="icon-btn" id="pipBtn" type="button" aria-label="Janela flutuante" title="Janela flutuante (P)" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/></svg>
             </button>
             <button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Ecrã inteiro" title="Ecrã inteiro (F)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
@@ -976,9 +1047,9 @@
             <label class="volume-control">
               <span class="volume-head">
                 Volume
-                <span id="volumeValue">112%</span>
+                <span id="volumeValue">100%</span>
               </span>
-              <input id="volume" type="range" min="40" max="160" value="112" step="1">
+              <input id="volume" type="range" min="10" max="100" value="100" step="5">
             </label>
           </div>
 
@@ -1015,6 +1086,7 @@
         <dt><kbd>Espaço</kbd></dt><dd>Iniciar ou pausar</dd>
         <dt><kbd>S</kbd></dt><dd>Saltar para a próxima fase</dd>
         <dt><kbd>R</kbd></dt><dd>Repor a sessão</dd>
+        <dt><kbd>P</kbd></dt><dd>Janela flutuante, sempre por cima</dd>
         <dt><kbd>F</kbd></dt><dd>Ecrã inteiro (com modo foco)</dd>
         <dt><kbd>M</kbd></dt><dd>Modo foco, sem distrações</dd>
         <dt><kbd>T</kbd></dt><dd>Mudar tema: automático, escuro, claro</dd>
@@ -1061,6 +1133,10 @@
       closeSettings: $("#closeSettings"),
       backdrop: $("#backdrop"),
       focusBtn: $("#focusBtn"),
+      pipBtn: $("#pipBtn"),
+      pipPlaceholder: $("#pipPlaceholder"),
+      pipBack: $("#pipBack"),
+      pipSettings: $("#pipSettings"),
       fullscreenBtn: $("#fullscreenBtn"),
       help: $("#help"),
       helpBtn: $("#helpBtn"),
@@ -1092,13 +1168,23 @@
       doneBreaks: 0,
       focusMs: 0,
       sound: true,
-      volume: 1.12,
+      volume: 1,
       theme: "auto",
       keepAwake: true,
       focus: false,
       focusFromUrl: false,
       focusBeforeFullscreen: false
     };
+
+    // Janela flutuante: o painel do relógio muda-se para uma janela do browser
+    // que fica sempre por cima das outras (Document Picture-in-Picture).
+    const pip = { win: null };
+
+    // Classes de tema e de estado aplicadas à página e à janela flutuante.
+    function eachRoot(fn) {
+      fn(root);
+      if (pip.win) fn(pip.win.document.documentElement);
+    }
 
     const ui = { compact: false, wide: false, lastText: "", fitKey: "", idleTimer: null, settingsOpen: false };
 
@@ -1117,7 +1203,7 @@
 
     function volumePercent() {
       const value = Number.parseInt(els.volume.value, 10);
-      return Number.isFinite(value) ? clamp(value, Number(els.volume.min), Number(els.volume.max)) : 112;
+      return Number.isFinite(value) ? clamp(value, Number(els.volume.min), Number(els.volume.max)) : 100;
     }
 
     function cycleCount() {
@@ -1176,7 +1262,7 @@
         els.cycles.value = String(saved.cycles);
       }
       if (typeof saved.sound === "boolean") state.sound = saved.sound;
-      if (saved.volume) els.volume.value = clamp(Number(saved.volume), 40, 160);
+      if (saved.volume) els.volume.value = clamp(Number(saved.volume), 10, 100);
       if (THEMES.includes(saved.theme)) state.theme = saved.theme;
       if (typeof saved.keepAwake === "boolean") state.keepAwake = saved.keepAwake;
       if (typeof saved.focus === "boolean") state.focus = saved.focus;
@@ -1241,23 +1327,48 @@
       return state.sound && (!audio.ctx || audio.ctx.state !== "running");
     }
 
-    function playTone(ctx, destination, freq, start, duration, gainValue, type = "sine") {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, start);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.985, start + duration);
-      gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-      osc.connect(gain);
-      gain.connect(destination);
-      osc.start(start);
-      osc.stop(start + duration + 0.03);
+    // Toque de sino: vários harmónicos com decaimento natural. Soa mais cheio e
+    // ouve-se melhor do que um bip simples, mesmo em colunas pequenas.
+    function bell(ctx, destination, freq, at, length, level) {
+      const partials = [[1, 1], [2, 0.55], [3, 0.32], [4.16, 0.22], [5.43, 0.14], [6.79, 0.08]];
+      partials.forEach(([ratio, amp], index) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const end = at + length / (1 + index * 0.55);
+        osc.frequency.value = freq * ratio;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(level * amp, at + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.0001, end);
+        osc.connect(gain);
+        gain.connect(destination);
+        osc.start(at);
+        osc.stop(end + 0.05);
+      });
     }
 
-    function beep(kind) {
-      if (navigator.vibrate) navigator.vibrate(kind === "done" ? [120, 70, 120] : [90]);
+    const NOTE = { C5: 523.25, E5: 659.25, G5: 783.99, C6: 1046.5, E6: 1318.51 };
+    // [nota, início em segundos, duração]
+    const MELODIES = {
+      // Fim do estudo: descida calma para o intervalo.
+      break: [[NOTE.E6, 0, 1.2], [NOTE.C6, 0.22, 1.2], [NOTE.G5, 0.44, 1.4]],
+      // Fim do intervalo: subida para voltar ao estudo.
+      study: [[NOTE.C5, 0, 1], [NOTE.E5, 0.16, 1], [NOTE.G5, 0.32, 1], [NOTE.C6, 0.48, 1.4]],
+      // Fim da sessão: subida e acorde final mais longo.
+      done: [[NOTE.C5, 0, 1], [NOTE.E5, 0.16, 1], [NOTE.G5, 0.32, 1], [NOTE.C6, 0.48, 2.4], [NOTE.G5, 0.48, 2.4], [NOTE.E6, 0.48, 2.4]]
+    };
+
+    // Agenda a melodia (repetida) em "destination" e devolve a duração em segundos.
+    function scheduleSound(ctx, destination, kind, startAt, repeats) {
+      const notes = MELODIES[kind] || MELODIES.study;
+      const every = notes[notes.length - 1][1] + (kind === "done" ? 2.1 : 0.95);
+      for (let round = 0; round < repeats; round += 1) {
+        notes.forEach(([freq, at, length]) => bell(ctx, destination, freq, startAt + round * every + at, length, 0.5));
+      }
+      return repeats * every + 1.5;
+    }
+
+    function beep(kind, repeats = 2) {
+      if (navigator.vibrate) navigator.vibrate(kind === "done" ? [200, 100, 200, 100, 200] : [150, 80, 150]);
       if (!state.sound) return;
       const ctx = audioContext();
       if (!ctx) return;
@@ -1267,36 +1378,22 @@
       const echo = ctx.createGain();
       const compressor = ctx.createDynamicsCompressor();
       master.gain.value = state.volume;
-      delay.delayTime.value = 0.13;
-      echo.gain.value = 0.28;
-      compressor.threshold.value = -18;
-      compressor.knee.value = 18;
-      compressor.ratio.value = 6;
-      compressor.attack.value = 0.004;
-      compressor.release.value = 0.12;
+      delay.delayTime.value = 0.11;
+      echo.gain.value = 0.22;
+      // O compressor funciona como limitador: o toque fica forte sem distorcer.
+      compressor.threshold.value = -10;
+      compressor.knee.value = 4;
+      compressor.ratio.value = 16;
+      compressor.attack.value = 0.001;
+      compressor.release.value = 0.25;
       compressor.connect(ctx.destination);
       master.connect(compressor);
       master.connect(delay);
       delay.connect(echo);
       echo.connect(compressor);
 
-      const startAt = ctx.currentTime + 0.02;
-      const notes = kind === "done"
-        ? [
-            { freq: 523.25, at: 0, duration: 0.18, gain: 0.26 },
-            { freq: 659.25, at: 0.17, duration: 0.2, gain: 0.27 },
-            { freq: 783.99, at: 0.34, duration: 0.34, gain: 0.28 }
-          ]
-        : [
-            { freq: 659.25, at: 0, duration: 0.16, gain: 0.24 },
-            { freq: 880, at: 0.14, duration: 0.24, gain: 0.25 }
-          ];
-
-      notes.forEach((note) => {
-        playTone(ctx, master, note.freq, startAt + note.at, note.duration, note.gain, "sine");
-        playTone(ctx, master, note.freq * 2, startAt + note.at, note.duration * 0.72, note.gain * 0.22, "triangle");
-      });
-      window.setTimeout(() => compressor.disconnect(), kind === "done" ? 1500 : 1100);
+      const seconds = scheduleSound(ctx, master, kind, ctx.currentTime + 0.03, repeats);
+      window.setTimeout(() => compressor.disconnect(), seconds * 1000);
     }
 
     /* ---------- Temporizador ---------- */
@@ -1382,7 +1479,8 @@
       state.phaseTotalMs = phaseMs();
       state.remainingMs = state.phaseTotalMs;
       state.endAt = at + state.phaseTotalMs;
-      return "switch";
+      // O toque depende da fase que começa: "break" ou "study".
+      return state.phase;
     }
 
     function complete() {
@@ -1479,18 +1577,20 @@
 
     let flashTimer = null;
     function flash() {
-      root.classList.remove("flash");
-      void root.offsetWidth;
-      root.classList.add("flash");
+      eachRoot((el) => {
+        el.classList.remove("flash");
+        void el.offsetWidth;
+        el.classList.add("flash");
+      });
       window.clearTimeout(flashTimer);
-      flashTimer = window.setTimeout(() => root.classList.remove("flash"), 1500);
+      flashTimer = window.setTimeout(() => eachRoot((el) => el.classList.remove("flash")), 1500);
     }
 
     const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     function applyTheme() {
       const resolved = state.theme === "auto" ? (darkQuery.matches ? "dark" : "light") : state.theme;
-      root.dataset.theme = resolved;
+      eachRoot((el) => { el.dataset.theme = resolved; });
       els.theme.value = state.theme;
       els.themeBtn.title = `Tema: ${THEME_NAMES[state.theme]} (T)`;
       const meta = document.querySelector('meta[name="theme-color"]');
@@ -1525,7 +1625,7 @@
 
     // Ajusta o tamanho dos números ao espaço livre (só no layout compacto).
     function fitTime() {
-      if (!ui.compact) {
+      if (!ui.compact && !pip.win) {
         els.time.style.fontSize = "";
         return;
       }
@@ -1582,10 +1682,10 @@
 
     // No modo foco, os botões desaparecem ao fim de alguns segundos sem mexer no rato.
     function markActive() {
-      root.classList.remove("idle");
+      eachRoot((el) => el.classList.remove("idle"));
       window.clearTimeout(ui.idleTimer);
-      if (state.focus && state.running && !ui.settingsOpen) {
-        ui.idleTimer = window.setTimeout(() => root.classList.add("idle"), 4000);
+      if ((state.focus || pip.win) && state.running && !ui.settingsOpen) {
+        ui.idleTimer = window.setTimeout(() => eachRoot((el) => el.classList.add("idle")), 4000);
       }
     }
 
@@ -1619,7 +1719,7 @@
     const wake = { sentinel: null, pending: false, error: false };
 
     function wakeWanted() {
-      return state.keepAwake && (state.running || state.focus) && document.visibilityState === "visible";
+      return Boolean(state.keepAwake && (state.running || state.focus || pip.win) && document.visibilityState === "visible");
     }
 
     async function syncWakeLock() {
@@ -1684,7 +1784,7 @@
       ui.lastText = timeText;
 
       setText(els.phasePill, state.complete ? "Concluído" : isBreak ? "Intervalo" : "Estudo");
-      root.classList.toggle("is-break", isBreak);
+      eachRoot((el) => el.classList.toggle("is-break", isBreak));
       els.clock.style.setProperty("--progress", `${(state.complete ? 1 : ratio) * 360}deg`);
       els.bar.style.setProperty("--percent", `${(state.complete ? 1 : ratio) * 100}%`);
       setText(els.substatus, state.complete ? "Sessão completa" : `Ciclo ${cycle} de ${totalCycles}`);
@@ -1714,6 +1814,7 @@
       setText(els.totalFocus, `${focusMinutes} min`);
       const title = state.running ? `${timeText} - ${isBreak ? "Intervalo" : "Estudo"}` : "Relógio de Estudo";
       if (document.title !== title) document.title = title;
+      if (pip.win && pip.win.document.title !== title) pip.win.document.title = title;
     }
 
     function updateSoundUi() {
@@ -1763,7 +1864,7 @@
       state.sound = !state.sound;
       updateSoundUi();
       saveSettings();
-      if (state.sound) beep("switch");
+      if (state.sound) beep("study", 1);
       render();
     });
 
@@ -1772,7 +1873,7 @@
       saveSettings();
     });
 
-    els.testSound.addEventListener("click", () => beep("done"));
+    els.testSound.addEventListener("click", () => beep("break"));
     els.theme.addEventListener("change", () => setTheme(els.theme.value));
     els.themeBtn.addEventListener("click", () => setTheme(THEMES[(THEMES.indexOf(state.theme) + 1) % THEMES.length]));
     darkQuery.addEventListener("change", applyTheme);
@@ -1811,10 +1912,76 @@
     window.addEventListener("resize", updateLayout);
 
     function isTyping(target) {
-      return target instanceof HTMLElement && (target.matches("input, select, textarea") || target.isContentEditable);
+      return Boolean(target && typeof target.matches === "function" && (target.matches("input, select, textarea") || target.isContentEditable));
     }
 
-    document.addEventListener("keydown", (event) => {
+    async function openPip() {
+      if (!("documentPictureInPicture" in window) || pip.win) return;
+      if (ui.settingsOpen) closeSettings(false);
+      toggleHelp(false);
+      let win;
+      try {
+        win = await window.documentPictureInPicture.requestWindow({ width: 380, height: 230 });
+      } catch {
+        return;
+      }
+      pip.win = win;
+      const doc = win.document;
+      doc.documentElement.lang = "pt-PT";
+      document.querySelectorAll("style").forEach((style) => doc.head.append(style.cloneNode(true)));
+      doc.documentElement.classList.add("compact", "focus", "pip");
+      doc.body.append(els.timer);
+      els.pipPlaceholder.hidden = false;
+      els.pipBtn.title = "Voltar à página (P)";
+      els.pipBtn.setAttribute("aria-label", "Voltar à página");
+
+      ["pointerdown", "keydown"].forEach((type) => doc.addEventListener(type, unlockAudio, { capture: true }));
+      ["pointermove", "pointerdown", "keydown", "wheel"].forEach((type) => doc.addEventListener(type, markActive, { passive: true }));
+      doc.addEventListener("keydown", (event) => onKeyDown(event, true));
+      doc.addEventListener("keyup", onKeyUp);
+      win.addEventListener("resize", updatePipLayout);
+      win.addEventListener("pagehide", closedPip, { once: true });
+
+      applyTheme();
+      updatePipLayout();
+      render();
+      markActive();
+      syncWakeLock();
+    }
+
+    function updatePipLayout() {
+      if (!pip.win) return;
+      const width = pip.win.innerWidth;
+      const height = pip.win.innerHeight;
+      pip.win.document.documentElement.classList.toggle("wide", width / height >= 2.2 && width >= 500);
+      ui.fitKey = "";
+      fitTime();
+    }
+
+    function closedPip() {
+      if (!pip.win) return;
+      pip.win = null;
+      els.pipPlaceholder.after(els.timer);
+      els.pipPlaceholder.hidden = true;
+      els.pipBtn.title = "Janela flutuante (P)";
+      els.pipBtn.setAttribute("aria-label", "Janela flutuante");
+      updateLayout();
+      render();
+      markActive();
+      syncWakeLock();
+    }
+
+    function togglePip() {
+      if (pip.win) pip.win.close();
+      else openPip();
+    }
+
+    els.pipBtn.hidden = !("documentPictureInPicture" in window);
+    els.pipBtn.addEventListener("click", togglePip);
+    els.pipBack.addEventListener("click", togglePip);
+    els.pipSettings.addEventListener("click", openSettings);
+
+    function onKeyDown(event, fromPip = false) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === "Escape") {
         if (!els.help.hidden) toggleHelp(false);
@@ -1833,6 +2000,11 @@
         skip();
       } else if (key === "r") {
         resetSession(true);
+      } else if (key === "p") {
+        togglePip();
+      } else if (fromPip && key !== "t") {
+        // Na janela flutuante só há os atalhos do relógio.
+        return;
       } else if (key === "f") {
         toggleFullscreen();
       } else if (key === "m") {
@@ -1848,11 +2020,14 @@
         return;
       }
       event.preventDefault();
-    });
+    }
 
-    document.addEventListener("keyup", (event) => {
+    function onKeyUp(event) {
       if (event.code === "Space" && !isTyping(event.target)) event.preventDefault();
-    });
+    }
+
+    document.addEventListener("keydown", (event) => onKeyDown(event));
+    document.addEventListener("keyup", onKeyUp);
 
     // A hora atual também é atualizada com o relógio parado.
     window.setInterval(() => {
