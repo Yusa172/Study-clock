@@ -1,13 +1,18 @@
 {
-  "name": "Relogio de Estudo",
+  "name": "Relógio de Estudo",
   "short_name": "Estudo",
-  "description": "Relogio simples para estudar com intervalos e toques.",
+  "description": "Relógio simples para estudar com intervalos e toques, pronto para mini monitores.",
   "id": "/Study-clock/",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f6f1",
+  "background_color": "#070b0c",
   "theme_color": "#1d6f64",
-  "lang": "pt",
-  "categories": ["productivity", "education"]
+  "lang": "pt-PT",
+  "categories": ["productivity", "education"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
 }
